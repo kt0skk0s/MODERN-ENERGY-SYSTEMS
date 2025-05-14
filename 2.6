@@ -1,0 +1,112 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\efstr\\Desktop\\ΣΕΣ\\ergasia2\\Dataset.xlsx"
+
+# Read sheets "Total Consumers" and "Weather"
+total_consumers_df = pd.read_excel(file_path, sheet_name="Total Consumers", header=None)
+total_consumers_df = total_consumers_df.drop(0)
+weather_df = pd.read_excel(file_path, sheet_name='Weather')
+print(weather_df.head())
+
+# Διαχείριση κενών τιμών στη θερμοκρασία πριν και μετά τη συγχώνευση
+weather_df['TemperatureC'] = weather_df['TemperatureC'].interpolate(method='linear')  # Παρεμβολή
+
+# Δημιουργία ημερομηνιών
+weather_df['datetime'] = pd.to_datetime(weather_df['datetime'])
+total_consumers_df['datetime'] = pd.date_range(start="2019-01-01  00:15", periods=len(total_consumers_df), freq='15min')
+
+# Φιλτράρισμα δεδομένων μέχρι τις 2019-05-18
+end_date = pd.to_datetime('2019-05-18')
+weather_df = weather_df[weather_df['datetime'] <= end_date]
+total_consumers_df = total_consumers_df[total_consumers_df['datetime'] <= end_date]
+
+# Υπολογισμός συνολικής κατανάλωσης
+numeric_columns = total_consumers_df.select_dtypes(include='number').columns
+total_consumers_df['Total Consumption'] = total_consumers_df[numeric_columns].mean(axis=1)
+print(total_consumers_df.head())
+
+# Συγχώνευση θερμοκρασίας με δεδομένα κατανάλωσης
+total_consumers_df = pd.merge(total_consumers_df, weather_df[['datetime', 'TemperatureC']], on='datetime', how='left')
+print(total_consumers_df.head())
+
+# Γέμισμα τυχόν νέων κενών τιμών μετά τη συγχώνευση
+total_consumers_df['TemperatureC'] = total_consumers_df['TemperatureC'].interpolate(method='linear')
+
+# Επαλήθευση αν υπάρχουν ακόμα κενά στη θερμοκρασία
+print("Κενές τιμές στη θερμοκρασία μετά τη συγχώνευση:", total_consumers_df['TemperatureC'].isnull().sum())  # Πρέπει να είναι 0
+
+# 1. Ομαδοποίηση δεδομένων ανά ημέρα
+total_consumers_df['date'] = total_consumers_df['datetime'].dt.date  # Εξαγωγή ημερομηνίας
+daily_consumption = total_consumers_df.groupby('date')['Total Consumption'].mean().reset_index()
+daily_temperature = total_consumers_df.groupby('date')['TemperatureC'].mean().reset_index()
+print(daily_consumption.head())
+print(daily_temperature.head(6))
+
+'''
+'''
+### 2. Calculate Peak Mean Consumption and Peak Daily Temperature
+# Peak Mean Consumption (highest mean consumption each day)
+peak_mean_consumption = total_consumers_df.groupby('date')['Total Consumption'].max().reset_index()
+# Peak Daily Temperature (highest temperature each day)
+peak_daily_temperature = total_consumers_df.groupby('date')['TemperatureC'].max().reset_index()
+print(f"Peak Mean Consumption: {peak_mean_consumption}")
+print(f"Peak Daily Temperature: {peak_daily_temperature}")
+
+combined_df = pd.DataFrame({
+    'Peak Daily Temperature': peak_daily_temperature['TemperatureC'],
+    'Peak Mean Consumption': peak_mean_consumption['Total Consumption']
+})
+
+# 4. Sort the combined DataFrame by Peak Daily Temperature in ascending order
+combined_df_sorted = combined_df.sort_values(by='Peak Daily Temperature', ascending=True)
+'''
+'''
+
+# 2. Δημιουργία γραφικών παραστάσεων με δεδομένα ανά ημέρα
+fig, axs = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+
+# 1. Κατανάλωση ηλεκτρικής ενέργειας
+axs[0].plot(daily_consumption['date'], daily_consumption['Total Consumption'], color='blue', label='Μέση Κατανάλωση (kWh)')
+axs[0].set_title('Μεταβολή Κατανάλωσης Ηλεκτρικής Ενέργειας (Ημερήσια)', fontsize=20)
+axs[0].set_ylabel('Κατανάλωση (kWh)', fontsize=18)
+axs[0].tick_params(axis='y', labelsize=16)
+axs[0].legend()
+axs[0].grid(True)
+
+# 2. Μεταβολή θερμοκρασίας
+axs[1].plot(daily_temperature['date'], daily_temperature['TemperatureC'], color='red', label='Μέση Θερμοκρασία (°C)')
+axs[1].set_title('Μεταβολή Θερμοκρασίας (Ημερήσια)', fontsize=20)
+axs[1].set_xlabel('Ημερομηνία', fontsize=18)
+axs[1].set_ylabel('Θερμοκρασία (°C)', fontsize=18)
+axs[1].tick_params(axis='x', labelsize=16,rotation=45)
+axs[1].tick_params(axis='y', labelsize=16)
+axs[1].legend()
+axs[1].grid(True)
+
+# Ρύθμιση διάταξης
+plt.tight_layout()
+plt.show()
+
+# 3. Plot "Peak Mean Consumption - Peak Daily Temperature"
+# Creating the plot with the two variables
+fig, ax = plt.subplots(figsize=(10, 6))
+
+plt.scatter(combined_df_sorted['Peak Daily Temperature'], combined_df_sorted['Peak Mean Consumption'], color='blue', label='Data Points')
+plt.title('Μέγιστη Μέση Κατανάλωση vs Μέγιστη Ημερήσια Θερμοκρασία', fontsize=20)
+plt.xlabel("Μέγιστη Ημερήσια Θερμοκρασία (°C)", fontsize=18)
+plt.ylabel("Μέγιστη Μέση Κατανάλωση (kWh)", fontsize=18)
+plt.grid(True)
+plt.legend()
+
+# Show the plot
+plt.tight_layout()
+plt.xticks(fontsize=16)
+plt.yticks(fontsize=16)
+plt.show()
