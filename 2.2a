@@ -1,0 +1,54 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\dimit\\OneDrive - Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης\\HMMY\\9ο Εξάμηνο\\Σύγχρονα Ενεργειακά Συστήματα\\Εργασία\\2ο παραδοτέο\\Dataset.xlsx"
+
+# Read sheet "Total Consumers" and replace zeroes with "nan"
+data = pd.read_excel(file_path, sheet_name="Total Consumers", header=None)
+data = data.replace(0, np.nan)
+
+# Read energy consumption starting from row 2 (ignore row 1)
+energy_data = data.iloc[1:, :].astype(float)
+
+# Create a datetime index starting at 2019-01-01 00:15 (Tuesday)
+start_time = pd.Timestamp("2019-01-01 00:15")
+num_rows = energy_data.shape[0]
+datetime_index = pd.date_range(start=start_time, periods=num_rows, freq="15T")
+
+# Convert consumption values stored to energy_data into a DataFrame with index the produced timestamps
+energy_df = pd.DataFrame(energy_data.values, columns=list(range(51)), index=datetime_index)
+
+# Add a 'Mean Total Consumption' column to DataFrame, this columns contains the mean value of all consumptions for that timestamp
+energy_df["Mean Total Consumption"] = energy_df.mean(axis=1)
+
+# Calculate mean consumption for each month
+monthly_mean_energy = energy_df["Mean Total Consumption"].resample('M').mean()
+print(monthly_mean_energy)
+
+# Plotting
+plt.figure(figsize=(12, 6))
+
+month_numbers = list(range(1, len(monthly_mean_energy) + 1))
+bars = plt.bar(month_numbers, monthly_mean_energy, color='skyblue')
+
+# Add mean values right above the top of each bar
+for i, bar in enumerate(bars):
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.01,  # Adjusted for monthly plot
+             f'{yval:.2f}', ha='center', va='bottom', 
+             rotation=0, fontsize=10)  # Smaller font size
+
+# Label x-axis as months
+plt.title('Μέση μηνιαία κατανάλωση', fontsize=20)
+plt.ylabel('Κατανάλωση ηλεκτρικής ενέργειας (kWh)', fontsize=18)
+plt.xlabel('Μήνες', fontsize=18)
+plt.xticks(month_numbers, monthly_mean_energy.index.strftime('%b %Y'), rotation=45,fontsize=16)
+plt.grid(axis='y', alpha=0.5)
+plt.tight_layout()
+plt.show(block=True)
