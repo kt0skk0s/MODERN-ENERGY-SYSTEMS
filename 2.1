@@ -1,0 +1,56 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\dimit\\OneDrive - Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης\\HMMY\\9ο Εξάμηνο\\Σύγχρονα Ενεργειακά Συστήματα\\Εργασία\\2ο παραδοτέο\\Dataset.xlsx"
+
+
+# Read sheet "Total Consumers" and replace zeroes with "nan"
+data = pd.read_excel(file_path, sheet_name="Total Consumers", header=None)
+data = data.replace(0, np.nan)
+
+# Read energy consumption values starting from row 2 (ignore row 1)
+energy_data = data.iloc[1:, :].astype(float)
+
+# Create a datetime index starting at 2019-01-01 00:15 (Tuesday)
+start_time = pd.Timestamp("2019-01-01 00:15")
+num_rows = energy_data.shape[0]
+datetime_index = pd.date_range(start=start_time, periods=num_rows, freq="15T")
+
+# Convert consumption values stored to energy_data into a DataFrame with index the produced timestamps
+energy_df = pd.DataFrame( energy_data.values, columns=list(range(51)), index=datetime_index )
+
+# Add a 'Mean Total Consumption' column to DataFrame, this columns contains the mean value of all consumptions for that timestamp
+energy_df["Mean Total Consumption"] = energy_df.mean(axis=1)
+print(energy_df["Mean Total Consumption"].head(4))
+
+# Calculate mean consumption for each day of the week
+weekly_mean_energy = energy_df["Mean Total Consumption"].groupby(energy_df.index.dayofweek).mean()
+weekly_mean_energy.index = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή']
+print(weekly_mean_energy)
+
+#plot results
+plt.figure(figsize=(10, 6))
+
+# Define colors: weekdays in blue, weekends in sky blue
+colors = ['blue' if day not in ['Σάββατο', 'Κυριακή'] else 'skyblue' for day in weekly_mean_energy.index]
+
+bars = plt.bar(weekly_mean_energy.index, weekly_mean_energy.values, color=colors)
+plt.title('Μέση κατανάλωση ανά μέρα για όλο το χρόνο', fontsize=20)
+plt.ylabel('Κατανάλωση ηλεκτρικής ενέργειας (kWh)', fontsize=18)
+plt.xlabel('Ημέρες', fontsize=18)
+plt.xticks(rotation=45,fontsize=16)
+
+# Annotate values on top of bars
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval, f'{yval:.6f}', ha='center', va='bottom')
+
+plt.grid(axis='y', alpha=0.5)
+plt.tight_layout()
+plt.show(block=True)  # Program stops here until the plot window is closed
