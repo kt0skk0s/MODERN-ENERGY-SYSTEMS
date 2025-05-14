@@ -1,0 +1,80 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\dimit\\OneDrive - Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης\\HMMY\\9ο Εξάμηνο\\Σύγχρονα Ενεργειακά Συστήματα\\Εργασία\\2ο παραδοτέο\\Dataset.xlsx"
+
+# Read sheet "Total Consumers" and replace zeroes with "nan"
+data = pd.read_excel(file_path, sheet_name="Total Consumers", header=None)
+data = data.replace(0, np.nan)
+
+# Read energy consumption starting from row 2 (ignore row 1)
+energy_data = data.iloc[1:, :].astype(float)
+
+# Create a datetime index starting at 2019-01-01 00:15 (Tuesday)
+start_time = pd.Timestamp("2019-01-01 00:15")
+num_rows = energy_data.shape[0]
+datetime_index = pd.date_range(start=start_time, periods=num_rows, freq="15T")
+
+# Convert consumption values stored to energy_data into a DataFrame with index the produced timestamps
+energy_df = pd.DataFrame(energy_data.values, columns=list(range(51)), index=datetime_index)
+
+# Add a 'Mean Total Consumption' column to DataFrame, this columns contains the mean value of all consumptions for that timestamp
+energy_df["Mean Total Consumption"] = energy_df.mean(axis=1)
+
+# Define seasons based on months
+def get_season(month):
+    if month in [12, 1, 2]:  # Winter
+        return 'Χειμώνας'
+    elif month in [3, 4, 5]:  # Spring
+        return 'Άνοιξη'
+    elif month in [6, 7, 8]:  # Summer
+        return 'Καλοκαίρι'
+    elif month in [9, 10, 11]:  # Autumn
+        return 'Φθινόπωρο'
+
+# Add a 'Season' column
+energy_df['Season'] = energy_df.index.month.map(get_season)
+
+# Calculate the mean for each season
+seasonal_mean_energy = energy_df.groupby('Season')["Mean Total Consumption"].mean()
+
+# Ensure correct seasonal order
+season_order = ['Χειμώνας', 'Άνοιξη', 'Καλοκαίρι', 'Φθινόπωρο']
+seasonal_mean_energy = seasonal_mean_energy.reindex(season_order)
+
+season_colors = {
+    'Χειμώνας': 'blue',  # Winter
+    'Άνοιξη': 'green',   # Spring
+    'Καλοκαίρι': 'red',  # Summer
+    'Φθινόπωρο': 'purple'  # Autumn
+}
+
+# Assign colors to each bar based on the season
+bar_colors = [season_colors[season] for season in seasonal_mean_energy.index]
+
+# Plotting
+plt.figure(figsize=(10, 6))
+
+bars = plt.bar(seasonal_mean_energy.index, seasonal_mean_energy, color=bar_colors)
+
+# Add bars text right above the top of each bar
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.01,
+             f'{yval:.2f}', ha='center', va='bottom', fontsize=10)
+
+# Labels and grid
+plt.title('Μέση τριμηνιαία κατανάλωση (ανά εποχή)', fontsize=20)
+plt.ylabel('Κατανάλωση ηλεκτρικής ενέργειας (kWh)', fontsize=18)
+plt.xlabel('Εποχές', fontsize=18)
+plt.xticks(fontsize=16)  # Set the font size for x-ticks
+
+plt.grid(axis='y', alpha=0.5)
+plt.tight_layout()
+plt.show()
