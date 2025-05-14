@@ -1,0 +1,82 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\efstr\\Desktop\\ΣΕΣ\\ergasia2\\Dataset.xlsx"
+
+#Read sheet 'Consumer5'
+consumer_df = pd.read_excel(file_path, sheet_name='Consumer5')
+
+# Remove of unnecessary columns (π.χ., 'Periods', 'Unnamed: 0')
+consumer_df = consumer_df.loc[:, ~consumer_df.columns.str.contains('^Unnamed|Periods', regex=True)]
+
+# Create timestamps
+consumer_df['datetime'] = pd.date_range(start="2019-01-01", periods=len(consumer_df), freq='15T')
+consumer_df['date'] = consumer_df['datetime'].dt.date
+consumer_df['day_of_week'] = consumer_df['datetime'].dt.day_name()
+consumer_df['is_weekend'] = consumer_df['day_of_week'].isin(['Saturday', 'Sunday'])
+
+# Map months to respective season of the year
+season_map = {
+    1: 'Winter', 2: 'Winter', 3: 'Spring',
+    4: 'Spring', 5: 'Spring', 6: 'Summer',
+    7: 'Summer', 8: 'Summer', 9: 'Autumn',
+    10: 'Autumn', 11: 'Autumn', 12: 'Winter'
+}
+consumer_df['season'] = consumer_df['datetime'].dt.month.map(season_map)
+
+# Select only columns of devices
+device_columns = [col for col in consumer_df.columns if col not in ['datetime', 'date', 'day_of_week', 'is_weekend', 'season']]
+
+# Calculate mean consumption per day (weekday or weekend)
+weekday_consumption = consumer_df.groupby(['is_weekend'])[device_columns].mean()
+
+# Calculate mean consumption per season
+season_consumption = consumer_df.groupby(['season'])[device_columns].mean()
+
+
+# Remove the first column (first bars) from the data
+weekday_consumption = weekday_consumption.iloc[:, 1:]
+season_consumption = season_consumption.iloc[:, 1:]
+
+# plot results
+# Graph for weekdays - weekends
+plt.figure(figsize=(12, 10))
+ax = weekday_consumption.T.plot(kind='bar', figsize=(12, 10), rot=45,fontsize=16)
+plt.title('Μέση Κατανάλωση ανά Εργάσιμη/Μη Εργάσιμη Ημέρα', fontsize=20)
+plt.xlabel('Συσκευές', fontsize=18)
+plt.ylabel('Μέση Κατανάλωση (kWh)', fontsize=18)
+plt.legend(['Μη Εργάσιμη', 'Εργάσιμη'], title="Κατηγορία Ημέρας")
+
+ax.set_ylim(0, weekday_consumption.max().max() * 1.1)
+
+# Print values on top of bars
+for container in ax.containers:
+    ax.bar_label(container, fmt='%.3f', label_type='edge', fontsize=10, rotation=90,padding=2)
+
+plt.tight_layout()
+plt.grid(axis='y', alpha=0.5)
+plt.show()
+
+
+# Graph for each season consumption
+plt.figure(figsize=(12, 10))
+ax = season_consumption.T.plot(kind='bar', figsize=(12, 10), rot=45,fontsize=16)
+plt.title('Μέση Κατανάλωση ανά Εποχή', fontsize=20)
+plt.xlabel('Συσκευές', fontsize=18)
+plt.ylabel('Μέση Κατανάλωση (kWh)', fontsize=18)
+plt.legend(title="Εποχή")
+
+ax.set_ylim(0, season_consumption.max().max() * 1.1)
+
+# Print values on top of bars
+for container in ax.containers:
+    ax.bar_label(container, fmt='%.3f', label_type='edge', fontsize=10, rotation=90,padding=2)
+
+plt.tight_layout()
+plt.grid(axis='y', alpha=0.5)
+plt.show()
