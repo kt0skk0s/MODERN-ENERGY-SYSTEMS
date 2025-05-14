@@ -1,0 +1,91 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\dimit\\OneDrive - Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης\\HMMY\\9ο Εξάμηνο\\Σύγχρονα Ενεργειακά Συστήματα\\Εργασία\\2ο παραδοτέο\\Dataset.xlsx"
+
+#Read sheet 'Consumer5'
+consumer_df = pd.read_excel(file_path, sheet_name='Consumer5')
+
+#Stores total consumption of Consumer5
+total_consumption = consumer_df["Total Consumption"]
+
+print(f"Συνολική κατανάλωση : {total_consumption.sum()} ")
+
+# device_ratios = percentage of devices' consumption compared to total consumption
+# device_consumptions = total consumption of each device
+# remaining consumption = total consumption - all device consumption
+device_ratios = {}
+device_consumptions = {}
+remaining_consumption = total_consumption.sum()
+
+for column in consumer_df.columns[3:]:
+    total_device_consumption = consumer_df[column].sum()
+    device_ratios[column] = total_device_consumption / total_consumption.sum() * 100
+    device_consumptions[column] = total_device_consumption
+    remaining_consumption -= total_device_consumption
+    print(f"Συνολική κατανάλωση για {column}: {total_device_consumption:.2f} kWh")
+
+# remaining_consumption is stored as 'Άλλα devices'
+device_ratios['Άλλα Devices'] = remaining_consumption / total_consumption.sum() * 100
+device_consumptions['Άλλα Devices'] = remaining_consumption
+
+# Convert to Series format for easier manipulation
+device_ratios = pd.Series(device_ratios)
+device_consumptions = pd.Series(device_consumptions)
+
+# plot results
+plt.figure(figsize=(10, 6))
+plt.pie(
+    device_ratios,
+    labels=device_ratios.index,
+    autopct='%1.1f%%',
+    startangle=140,
+    textprops={'fontsize': 10}  # Ρύθμιση μεγέθους γραμματοσειράς
+)
+plt.title('Αναλογία Κατανάλωσης Συσκευών σε σχέση με τη Συνολική Κατανάλωση', fontsize=14)
+plt.tight_layout()  # Βελτίωση διάταξης για να μην επικαλύπτονται τα κείμενα
+plt.show()
+
+# Εκτύπωση αναλογιών
+print("Αναλογίες κατανάλωσης συσκευών:")
+print(device_ratios)
+
+# Δημιουργία ραβδογράμματος
+plt.figure(figsize=(12, 6))
+bars = plt.bar(device_consumptions.index, device_consumptions.values, color='skyblue')
+plt.title('Συνολική Κατανάλωση ανά Συσκευή', fontsize=20)
+plt.xlabel('Συσκευές', fontsize=18)
+plt.ylabel('Κατανάλωση (kWh)', fontsize=18)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.grid(axis='y', alpha=0.5)
+
+# Προσθήκη τιμών πάνω από κάθε μπάρα
+for bar in bars:
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width() / 2.0, height + 0.5, f'{height:.2f}', ha='center', fontsize=10)
+
+plt.show()
+
+# Δημιουργία ραβδογράμματος χωρίς τα "Άλλα Devices"
+device_consumptions_no_other = device_consumptions.drop('Άλλα Devices')
+plt.figure(figsize=(12, 6))
+bars_no_other = plt.bar(device_consumptions_no_other.index, device_consumptions_no_other.values, color='lightgreen')
+plt.title('Συνολική Κατανάλωση ανά Συσκευή', fontsize=20)
+plt.xlabel('Συσκευές', fontsize=18)
+plt.ylabel('Κατανάλωση (kWh)', fontsize=18)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.grid(axis='y', alpha=0.5)
+
+# Προσθήκη τιμών πάνω από κάθε μπάρα
+for bar in bars_no_other:
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width() / 2.0, height + 0.5, f'{height:.2f}', ha='center', fontsize=10)
+
+plt.show()
