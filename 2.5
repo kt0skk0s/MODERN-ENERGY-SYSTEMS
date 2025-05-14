@@ -1,0 +1,94 @@
+#Σύγχρονα Ενεργειακά Συστήματα
+#Χειμερινό 2024-25
+#Ομάδα 05
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# !!! PLEASE INSERT YOUR PATH
+file_path = "C:\\Users\\dimit\\OneDrive - Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης\\HMMY\\9ο Εξάμηνο\\Σύγχρονα Ενεργειακά Συστήματα\\Εργασία\\2ο παραδοτέο\\Dataset.xlsx"
+
+# Φόρτωση δεδομένων από τα φύλλα
+total_consumers_df = pd.read_excel(file_path, sheet_name='Total Consumers')
+weather_df = pd.read_excel(file_path, sheet_name='Weather')
+
+# Υπολογισμός μέσου όρου για τους Total Consumers
+mean_total_consumption = total_consumers_df.mean(axis=1)
+total_consumers_df['Mean Total Consumption'] = mean_total_consumption
+
+# Διαχείριση κενών τιμών στη θερμοκρασία
+weather_df['TemperatureC'] = weather_df['TemperatureC'].interpolate(method='linear')
+
+# Δημιουργία ημερομηνιών
+weather_df['datetime'] = pd.to_datetime(weather_df['datetime'])
+total_consumers_df['datetime'] = pd.date_range(start="2019-01-01 00:15", periods=len(total_consumers_df), freq='15min')
+
+# Φιλτράρισμα δεδομένων μέχρι τις 2019-05-18 (όριο δεδομένων θερμοκρασίας)
+end_date = pd.to_datetime('2019-05-18')
+weather_df = weather_df[weather_df['datetime'] <= end_date]
+total_consumers_df = total_consumers_df[total_consumers_df['datetime'] <= end_date]
+
+# Συγχώνευση θερμοκρασίας με δεδομένα κατανάλωσης
+total_consumers_df = pd.merge(total_consumers_df, weather_df[['datetime', 'TemperatureC']], on='datetime', how='left')
+
+# Γέμισμα τυχόν νέων κενών τιμών μετά τη συγχώνευση
+total_consumers_df['TemperatureC'] = total_consumers_df['TemperatureC'].interpolate(method='linear')
+
+# Επιλογή συγκεκριμένων ημερομηνιών για ανάλυση
+mean_selected_dates = [
+    '2019-01-15', '2019-02-13', '2019-03-22', '2019-04-15', '2019-05-11'
+]
+
+minimum_selected_dates = [
+    '2019-01-18', '2019-02-02', '2019-03-13', '2019-04-04', '2019-05-07'
+]
+
+maximum_selected_dates = [
+    '2019-01-25', '2019-02-26', '2019-03-24', '2019-04-20', '2019-05-13'
+]
+
+selected_dates = pd.to_datetime(mean_selected_dates)
+
+# Φιλτράρισμα των δεδομένων για τις συγκεκριμένες ημερομηνίες
+filtered_data = total_consumers_df[total_consumers_df['datetime'].dt.date.isin(selected_dates.date)]
+
+# Resample ανά ώρα για κάθε επιλεγμένη ημερομηνία
+filtered_data.set_index('datetime', inplace=True)
+hourly_data = filtered_data.resample('h').mean()
+
+# Δημιουργία γραφήματος για όλες τις ημερομηνίες μαζί
+fig, ax1 = plt.subplots(figsize=(14, 8))
+
+# Χρώματα για κάθε ημερομηνία
+colors = ['blue', 'orange', 'green', 'red', 'purple']
+
+for i, date in enumerate(selected_dates):
+    daily_data = hourly_data[hourly_data.index.date == date.date()]
+    ax1.plot(daily_data.index.hour, daily_data['Mean Total Consumption'], label=f'{date.date()} Κατανάλωση (kWh)', color=colors[i],linewidth=2)
+
+ax1.set_xlabel('Ώρες της Ημέρας', fontsize=18)
+ax1.set_ylabel('Μέση Κατανάλωση (kWh)', fontsize=18)
+ax1.legend(loc='upper left')
+ax1.set_xticks(range(0, 24, 1))
+ax1.tick_params(axis='x', labelsize=16)
+ax1.tick_params(axis='y', labelsize=16)
+
+
+# Secondary y-axis για θερμοκρασία
+ax2 = ax1.twinx()
+for i, date in enumerate(selected_dates):
+    daily_data = hourly_data[hourly_data.index.date == date.date()]
+    ax2.plot(daily_data.index.hour, daily_data['TemperatureC'], linestyle='--', label=f'{date.date()} Θερμοκρασία (°C)', color=colors[i],linewidth=0.5)
+
+ax2.set_ylabel('Θερμοκρασία (°C)', fontsize=18)
+ax2.tick_params(axis='y', labelsize=16)
+ax2.legend(loc='upper right')
+
+# Τίτλος και διάταξη
+plt.title('Ανάλυση Μέσης Κατανάλωσης και Θερμοκρασίας για Επιλεγμένες Ημερομηνίες', fontsize=20)
+plt.tight_layout()
+plt.grid(axis='x', alpha=0.5)
+plt.show()
+
+# Επαναφορά του index αν χρειαστεί για περαιτέρω χρήση
+filtered_data.reset_index(inplace=True)
